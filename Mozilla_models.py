@@ -2,8 +2,9 @@ from keras.models import Model
 from keras.layers import CuDNNGRU, Input, Dense, BatchNormalization, Activation, TimeDistributed
 import keras.backend as K
 import numpy as np
-
-
+from keras_attention.models.custom_recurrents import AttentionDecoder
+from keras.layers.wrappers import Bidirectional
+from keras import regularizers
 
 
 def repeat_encoding(input_tensors):
@@ -23,7 +24,7 @@ def repeat_encoding(input_tensors):
     return K.batch_dot(one_matrix,to_be_repeated)
     
 
-def import_models(ind, n_lstm, n_seed, n_mel):
+def import_models(ind, n_lstm, n_seed, n_mel, seq_length):
     np.random.seed(n_seed)
     K.tf.set_random_seed(n_seed)
 
@@ -45,7 +46,19 @@ def import_models(ind, n_lstm, n_seed, n_mel):
         x = CuDNNGRU(n_lstm,return_sequences=True)(x,initial_state=[state_h])       
         x = TimeDistributed(Dense(n_mel, activation = 'tanh'), name='out_main')(x)  
         
-    model = Model(inputs = [x_in_encoder,x_in_pre],
+    
+        model = Model(inputs = [x_in_encoder,x_in_pre],
                       outputs=[x])
-#     model.summary()
+    if ind == 'GRU_attention':
+        # https://machinelearningmastery.com/encoder-decoder-attention-sequence-to-sequence-prediction-keras/
+        x_in_encoder = Input(shape = (seq_length, n_mel), name='in_signal');             
+        x_enc = Bidirectional(CuDNNGRU(n_lstm, return_sequences=True, 
+                                       #kernel_regularizer= regularizers.l2(0.01),
+                                       name='encoder'))(x_in_encoder)
+        x_enc = BatchNormalization()(x_enc)
+        x = AttentionDecoder(n_lstm, n_mel,name='out_main')(x_enc)
+#         x = TimeDistributed(Dense(n_mel, activation = 'tanh'), name='out_main')(x)  
+        
+        model = Model(inputs = x_in_encoder, outputs = x)
+
     return model

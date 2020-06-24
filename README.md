@@ -7,5 +7,8 @@ Code originally proposed to implement train autoencoder structures for feature e
 WARNING: This is a work in progress.
 
 ## Versioning
+v1.1:
+* Additional model using attention. Dependency: [URL](https://github.com/datalogue/keras-attention)
+
 v1.0:
 * First trainable implementation of the model.
